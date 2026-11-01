@@ -299,6 +299,30 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         logger.info("=== 应用 SUSFS 补丁 ===")
         self._chdir(self.work_dir)
         common_dir = self.work_dir / "common"
+        # susfs_commit 锁定旧版时，从 HEAD 叠加 priority 接口所需 3 文件
+        # (旧 patch 与 157 树匹配; susfs.c/susfs.h/susfs_def.h 直接 cp 不依赖 patch)
+        if self.config.susfs_commit:
+            try:
+                import subprocess as _sp
+                head_url = "https://github.com/ShirkNeko/susfs4ksu/archive/refs/heads/gki-android14-6.1.tar.gz"
+                _p = _sp.run(f"curl -sL --max-time 120 {head_url} | tar -xz -C /tmp/susfs_head_$$ --one-top-level 2>/dev/null || "
+                             f"mkdir -p /tmp/susfs_head && curl -sL --max-time 120 {head_url} | tar -xz -C /tmp/susfs_head",
+                             shell=True, capture_output=True, text=True)
+                import glob as _g
+                cands = _g.glob("/tmp/susfs_head*/gki-android14-6.1")
+                if cands:
+                    src = cands[0]
+                    for rel in ["kernel_patches/fs/susfs.c",
+                                "kernel_patches/include/linux/susfs.h",
+                                "kernel_patches/include/linux/susfs_def.h"]:
+                        s = Path(src) / rel
+                        if s.exists():
+                            dst = common_dir / rel.split("kernel_patches/")[1]
+                            dst.parent.mkdir(parents=True, exist_ok=True)
+                            _sp.run(f"cp {s} {dst}", shell=True)
+                    logger.info("=== 已叠加 HEAD 版 susfs.c/susfs.h/susfs_def.h (priority 接口) ===")
+            except Exception as _e:
+                logger.warning(f"susfs HEAD 叠加失败(继续用锁定版): {_e}")
         susfs_patch = self.susfs_dir / "kernel_patches" / self.config.get_susfs_patch_filename()
         if susfs_patch.exists():
             self._run_cmd(f"cp {susfs_patch} {common_dir}/", check=False)
