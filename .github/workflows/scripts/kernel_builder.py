@@ -346,6 +346,15 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
                     _sp.run(f"cp {s} {dst}", shell=True)
                     copied += 1
             logger.info(f"=== 已叠加 HEAD 版 susfs 文件 ({copied}/4) — priority 接口就位 ===")
+            # 157 内核专用：用剥除 selinux 段的主 patch（SukiSU main 新架构自带 selinux_hide）
+            try:
+                _sp.run(["curl", "-sL", "--max-time", "60", "-o",
+                         str(self.susfs_dir / "kernel_patches/50_add_susfs_in_gki-android14-6.1.patch"),
+                         "https://raw.githubusercontent.com/xumen34/GKI_KernelSU_SUSFS/main/artifacts/50_add_susfs_in_gki-android14-6.1-157.patch"],
+                        timeout=90, check=False)
+                logger.info("=== 已替换为 157 专用主 patch (selinux-free) ===")
+            except Exception as _e2:
+                logger.warning(f"157 patch 替换失败: {_e2}")
         except Exception as _e:
             logger.warning(f"susfs HEAD 叠加失败(继续用锁定版): {_e}")
 
