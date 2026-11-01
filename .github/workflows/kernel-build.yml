@@ -57,6 +57,10 @@ on:
         default: ''
       susfs_commit:
         description: '指定 SUSFS commit hash'
+      kernel_commit:
+        description: 'lock kernel source commit (sublevel)'
+        required: false
+        type: string
         required: false
         type: string
         default: ''
