@@ -299,25 +299,54 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         logger.info("=== 应用 SUSFS 补丁 ===")
         self._chdir(self.work_dir)
         common_dir = self.work_dir / "common"
-        susfs_patch = self.susfs_dir / "kernel_patches" / self.config.get_susfs_patch_filename()
+        patch_name = self.config.get_susfs_patch_filename()
+        susfs_patch = self.susfs_dir / "kernel_patches" / patch_name
+
+        # [1] 锁定旧 susfs 时，先换用 157 专用主 patch（剥除 selinux 段的旧 API 引用）
+        if self.config.susfs_commit:
+            self._swap_susfs_patch_157(susfs_patch)
+
+        # [2] 拷主 patch 到 common
         if susfs_patch.exists():
             self._run_cmd(f"cp {susfs_patch} {common_dir}/", check=False)
+
+        # [3] 拷 susfs 源文件（旧版打底）
         for src, dst in [
             (self.susfs_dir / "kernel_patches/fs", common_dir / "fs/"),
             (self.susfs_dir / "kernel_patches/include/linux", common_dir / "include/linux/"),
         ]:
             if src.exists():
                 self._run_cmd(f"cp -r {src}/* {dst}", check=False)
-        # 锁定旧 susfs 时，叠加 HEAD 版 3 文件（priority uid filter 接口）
-        # 顺序关键：必须在 cp -r 旧版之后、patch 之前
+
+        # [4] 叠加 HEAD 版 3 文件（priority uid filter 接口）——必须在 [3] 之后
         if self.config.susfs_commit:
             self._overlay_susfs_head(common_dir)
-        if susfs_patch.exists():
-            patch_file = common_dir / self.config.get_susfs_patch_filename()
-            if patch_file.exists():
-                self._chdir(common_dir)
-                self._run_cmd(f"patch -p1 --fuzz=3 < {patch_file}", check=False)
-                self._chdir(self.work_dir)
+
+        # [5] 应用主 patch
+        patch_file = common_dir / patch_name
+        if patch_file.exists():
+            content = patch_file.read_text(errors="ignore")
+            if "fake_state" in content:
+                raise RuntimeError("主 patch 仍含 fake_state 引用，157 专用替换未生效")
+            logger.info(f"=== 应用主 patch ({len(content)} bytes, fake_state=0) ===")
+            self._chdir(common_dir)
+            self._run_cmd(f"patch -p1 --fuzz=3 < {patch_file}", check=False)
+            self._chdir(self.work_dir)
+
+    def _swap_susfs_patch_157(self, dest):
+        """下载 157 专用主 patch（剥除 selinux 旧 API 段）并强校验"""
+        import subprocess as _sp
+        url = ("https://raw.githubusercontent.com/xumen34/GKI_KernelSU_SUSFS/main/"
+               "artifacts/50_add_susfs_in_gki-android14-6.1-157.patch")
+        for attempt in range(3):
+            _sp.run(["curl", "-sL", "--retry", "2", "--max-time", "120", "-o", str(dest), url],
+                    timeout=180)
+            txt = dest.read_text(errors="ignore") if dest.exists() else ""
+            if "fake_state" not in txt and "diff --git" in txt and len(txt) > 50000:
+                logger.info(f"=== 已换用 157 专用主 patch ({len(txt)} bytes, fake_state=0) ===")
+                return
+            logger.warning(f"157 patch 校验失败(第{attempt+1}次, len={len(txt)})")
+        raise RuntimeError("157 专用主 patch 下载校验连续失败，中止构建")
 
     def _overlay_susfs_head(self, common_dir):
         """从 susfs4ksu HEAD 下载并叠加 susfs.c / susfs.h / susfs_def.h"""
