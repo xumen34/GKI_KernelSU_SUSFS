@@ -347,14 +347,14 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
                     copied += 1
             logger.info(f"=== 已叠加 HEAD 版 susfs 文件 ({copied}/4) — priority 接口就位 ===")
             # 157 内核专用：用剥除 selinux 段的主 patch（SukiSU main 新架构自带 selinux_hide）
-            try:
-                _sp.run(["curl", "-sL", "--max-time", "60", "-o",
-                         str(self.susfs_dir / "kernel_patches/50_add_susfs_in_gki-android14-6.1.patch"),
-                         "https://raw.githubusercontent.com/xumen34/GKI_KernelSU_SUSFS/main/artifacts/50_add_susfs_in_gki-android14-6.1-157.patch"],
-                        timeout=90, check=False)
-                logger.info("=== 已替换为 157 专用主 patch (selinux-free) ===")
-            except Exception as _e2:
-                logger.warning(f"157 patch 替换失败: {_e2}")
+            _dest = self.susfs_dir / "kernel_patches/50_add_susfs_in_gki-android14-6.1.patch"
+            _rc = _sp.run(["curl", "-sL", "--max-time", "90", "-o", str(_dest),
+                     "https://raw.githubusercontent.com/xumen34/GKI_KernelSU_SUSFS/main/artifacts/50_add_susfs_in_gki-android14-6.1-157.patch"],
+                    timeout=120)
+            _chk = _dest.read_text(errors="ignore") if _dest.exists() else ""
+            if "fake_state" in _chk or "diff --git" not in _chk or len(_chk) < 50000:
+                raise RuntimeError(f"157 patch 下载/校验失败 (len={len(_chk)})")
+            logger.info(f"=== 已替换为 157 专用主 patch (selinux-free, {len(_chk)} bytes, fake_state=0) ===")
         except Exception as _e:
             logger.warning(f"susfs HEAD 叠加失败(继续用锁定版): {_e}")
 
