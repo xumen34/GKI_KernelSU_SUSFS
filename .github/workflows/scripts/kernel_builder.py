@@ -309,7 +309,9 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
                              f"mkdir -p /tmp/susfs_head && curl -sL --max-time 120 {head_url} | tar -xz -C /tmp/susfs_head",
                              shell=True, capture_output=True, text=True)
                 import glob as _g
-                cands = _g.glob("/tmp/susfs_head*/gki-android14-6.1")
+                cands = _g.glob("/tmp/susfs_head*/susfs4ksu-gki-android14-6.1") + _g.glob("/tmp/susfs_head*/gki-android14-6.1")
+                if not cands:
+                    logger.warning("overlay: tarball 解出目录未匹配 glob，跳过叠加")
                 if cands:
                     src = cands[0]
                     for rel in ["kernel_patches/fs/susfs.c",
