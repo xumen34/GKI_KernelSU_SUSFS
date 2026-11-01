@@ -340,11 +340,17 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
                         "kernel_patches/include/linux/susfs_def.h"]:
                 s = Path(src) / rel
                 if s.exists():
-                    dst = common_dir / rel.split("kernel_patches/")[1]
-                    dst.parent.mkdir(parents=True, exist_ok=True)
-                    _sp.run(f"cp {s} {dst}", shell=True)
+                    if rel.endswith(".patch"):
+                        # KSU 侧 patch: 覆盖 susfs4ksu 目录里将被使用的同名 patch
+                        dst = self.susfs_dir / rel
+                        dst.parent.mkdir(parents=True, exist_ok=True)
+                        _sp.run(f"cp {s} {dst}", shell=True)
+                    else:
+                        dst = common_dir / rel.split("kernel_patches/")[1]
+                        dst.parent.mkdir(parents=True, exist_ok=True)
+                        _sp.run(f"cp {s} {dst}", shell=True)
                     copied += 1
-            logger.info(f"=== 已叠加 HEAD 版 susfs 文件 ({copied}/3) — priority 接口就位 ===")
+            logger.info(f"=== 已叠加 HEAD 版 susfs 文件(含KSU patch) ({copied}/4) — priority 接口就位 ===")
         except Exception as _e:
             logger.warning(f"susfs HEAD 叠加失败(继续用锁定版): {_e}")
 
