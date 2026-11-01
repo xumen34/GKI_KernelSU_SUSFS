@@ -114,6 +114,7 @@ class BuildConfig:
     custom_version: Optional[str] = None
     revision: Optional[str] = None
     build_id: Optional[str] = None
+    kernel_commit: Optional[str] = None
 
     def __post_init__(self):
         self._validate_android_version()
