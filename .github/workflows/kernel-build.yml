@@ -57,10 +57,6 @@ on:
         default: ''
       susfs_commit:
         description: '指定 SUSFS commit hash'
-      kernel_commit:
-        description: 'lock kernel source commit (sublevel)'
-        required: false
-        type: string
         required: false
         type: string
         default: ''
@@ -172,6 +168,7 @@ jobs:
           [ "${{ github.event.inputs.set_defbbr }}" = "true" ] && ARGS="$ARGS --bbr"
           [ -z "${{ github.event.inputs.kernelsu_commit }}" ] || ARGS="$ARGS --ksu-commit=${{ github.event.inputs.kernelsu_commit }}"
           [ -z "${{ github.event.inputs.susfs_commit }}" ] || ARGS="$ARGS --susfs-commit=${{ github.event.inputs.susfs_commit }}"
+          [ -z "${{ github.event.inputs.kernel_commit }}" ] || ARGS="$ARGS --kernel-commit=${{ github.event.inputs.kernel_commit }}"
           [ -z "${{ github.event.inputs.custom_version }}" ] || ARGS="$ARGS --custom-version=${{ github.event.inputs.custom_version }}"
           [ "${{ github.event.inputs.make_release }}" = "true" ] || ARGS="$ARGS --no-release"
 
