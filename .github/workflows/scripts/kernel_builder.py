@@ -299,6 +299,17 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         logger.info("=== 应用 SUSFS 补丁 ===")
         self._chdir(self.work_dir)
         common_dir = self.work_dir / "common"
+            except Exception as _e:
+                logger.warning(f"susfs HEAD 叠加失败(继续用锁定版): {_e}")
+        susfs_patch = self.susfs_dir / "kernel_patches" / self.config.get_susfs_patch_filename()
+        if susfs_patch.exists():
+            self._run_cmd(f"cp {susfs_patch} {common_dir}/", check=False)
+        for src, dst in [
+            (self.susfs_dir / "kernel_patches/fs", common_dir / "fs/"),
+            (self.susfs_dir / "kernel_patches/include/linux", common_dir / "include/linux/"),
+        ]:
+            if src.exists():
+                self._run_cmd(f"cp -r {src}/* {dst}", check=False)
         # susfs_commit 锁定旧版时，从 HEAD 叠加 priority 接口所需 3 文件
         # (旧 patch 与 157 树匹配; susfs.c/susfs.h/susfs_def.h 直接 cp 不依赖 patch)
         if self.config.susfs_commit:
@@ -323,17 +334,6 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
                             dst.parent.mkdir(parents=True, exist_ok=True)
                             _sp.run(f"cp {s} {dst}", shell=True)
                     logger.info("=== 已叠加 HEAD 版 susfs.c/susfs.h/susfs_def.h (priority 接口) ===")
-            except Exception as _e:
-                logger.warning(f"susfs HEAD 叠加失败(继续用锁定版): {_e}")
-        susfs_patch = self.susfs_dir / "kernel_patches" / self.config.get_susfs_patch_filename()
-        if susfs_patch.exists():
-            self._run_cmd(f"cp {susfs_patch} {common_dir}/", check=False)
-        for src, dst in [
-            (self.susfs_dir / "kernel_patches/fs", common_dir / "fs/"),
-            (self.susfs_dir / "kernel_patches/include/linux", common_dir / "include/linux/"),
-        ]:
-            if src.exists():
-                self._run_cmd(f"cp -r {src}/* {dst}", check=False)
         if susfs_patch.exists():
             patch_file = common_dir / self.config.get_susfs_patch_filename()
             if patch_file.exists():
