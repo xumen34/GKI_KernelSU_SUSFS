@@ -213,6 +213,13 @@ CONFIG_KSU_SUSFS_OPEN_REDIRECT=y
         if not common_dir.exists():
             raise RuntimeError("repo sync 失败，common 目录不存在")
         self._apply_legacy_fixes(remote)
+        kc = getattr(self.config, "kernel_commit", None)
+        if kc:
+            logger.info(f"=== 锁定内核源 commit: {kc} ===")
+            self._chdir(self.work_dir / "common")
+            self._run_cmd(f"git fetch origin {kc} || git fetch origin", check=False)
+            self._run_cmd(f"git checkout {kc}")
+            self._chdir(self.work_dir)
         logger.info("=== 内核源代码同步完成 ===")
 
     def _apply_legacy_fixes(self, remote_branch: str = ""):
