@@ -59,6 +59,10 @@ on:
         description: '指定 SUSFS commit hash'
         required: false
         type: string
+      kernel_commit:
+        description: 'lock kernel source commit (sublevel)'
+        required: false
+        type: string
         default: ''
       custom_version:
         description: '自定义版本名称 (可选)'
